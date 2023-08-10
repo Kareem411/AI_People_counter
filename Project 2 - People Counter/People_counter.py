@@ -2,6 +2,9 @@ import sys
 import cv2
 import tkinter as tk
 from PIL import Image, ImageTk
+from ultralytics import YOLO
+import cvzone
+from sort import *
 
 app = tk.Tk()
 
@@ -13,8 +16,14 @@ video_cap = None
 lines = []
 color_map = {
     "blue": (255, 0, 0),  # BGR format
-    "red": (0, 0, 255)
-}
+    "red": (0, 0, 255)}
+class_colors = {}
+
+model = YOLO("yolov8n.pt")
+
+# Tracking
+tracker = Sort(max_age=20, min_hits=3, iou_threshold=0.3)
+
 
 # Convert the frame to a PhotoImage for the background image
 if ret:
@@ -96,29 +105,79 @@ if ret:
 
 
     def done_button_clicked():
-        global video_cap, lines  # Reference the global variables
+        global video_cap, lines, class_colors  # Reference the global variables
         app.destroy()  # Close the Tkinter window
         if video_cap:
             video_cap.release()  # Release the video capture
         cv2.destroyAllWindows()  # Close any remaining cv2 windows
 
-        # Play the video using cv2.imshow()
+        # Load the video again for processing the mask
         video_cap = cv2.VideoCapture(video_url)
+
+        # Define a blank mask
+        mask = np.zeros((height, width), dtype=np.uint8)
+
+        # Draw the region between the blue and red lines on the mask
+        for line_start, line_end, line_color in lines:
+            if line_color == "blue":
+                blue_line = line_start, line_end
+            elif line_color == "red":
+                red_line = line_start, line_end
+
+        # Calculate the region for the mask
+        mask_region = np.array([
+            [blue_line[0][0], blue_line[0][1]],
+            [blue_line[1][0], blue_line[1][1]],
+            [red_line[1][0], red_line[1][1]],
+            [red_line[0][0], red_line[0][1]]
+        ], dtype=np.int32)
+        cv2.fillPoly(mask, [mask_region], 255)
+
+        # Apply the mask to each frame
         while True:
-            ret, frame = video_cap.read()
-            if not ret:
+            success, img = video_cap.read()
+            if not success:
                 break
 
-            # Draw lines on the frame
-            for line_start, line_end, line_color in lines:
-                line_color_bgr = color_map.get(line_color, (0, 0, 0))  # Default to black if color not found
-                cv2.line(frame, line_start, line_end, line_color_bgr, 2)
+            imgRegion = cv2.bitwise_and(img, img, mask=mask)
 
-            cv2.imshow("Video Playback", frame)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
+            results = model(imgRegion, stream=True)
 
-        cv2.destroyAllWindows()  # Close the cv2 window after playback is done
+            detections = np.empty((0, 5))
+
+            for r in results:
+                boxes = r.boxes
+                for box in boxes:
+                    # Bounding Box
+                    xmin, ymin, xmax, ymax = map(int, box.xyxy[0])
+                    w, h = xmax - xmin, ymax - ymin
+
+                    # Confidence
+                    conf = round(float(box.conf[0]), 2)
+                    # Class Name
+                    cls = int(box.cls[0])
+                    currentClass = model.names[cls]
+
+                    if currentClass == "person" and conf > 0.3:
+                        # Generate and store color for each class
+                        if cls not in class_colors:
+                            class_colors[cls] = tuple(np.random.randint(0, 255, 3).tolist())
+                        color = class_colors[cls]
+
+                        # Draw bounding box and label with consistent color
+                        cvzone.cornerRect(img, (xmin, ymin, w, h), l=9, rt=5, colorR=color)
+                        cvzone.putTextRect(img, f'{currentClass} {conf}', (max(0, xmin), max(35, ymin)),
+                                           scale=0.6, thickness=1, offset=3)
+
+                        currentArray = np.array([xmin, ymin, xmax, ymax, conf])
+                        detections = np.vstack((detections, currentArray))
+
+            resultsTracker = tracker.update(detections)
+            cv2.imshow("Output", img)
+            cv2.waitKey(1)
+
+        video_cap.release()
+        cv2.destroyAllWindows()
 
 
     def paint_canvas():
