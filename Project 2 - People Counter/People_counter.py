@@ -9,6 +9,12 @@ app = tk.Tk()
 video_url = "C:\\Users\\zadka\\Desktop\\Comp Vision Course\\REQ\\Project 2 - People Counter\\Videos\\people.mp4"
 video_cap = cv2.VideoCapture(video_url)
 ret, frame = video_cap.read()
+video_cap = None
+lines = []
+color_map = {
+    "blue": (255, 0, 0),  # BGR format
+    "red": (0, 0, 255)
+}
 
 # Convert the frame to a PhotoImage for the background image
 if ret:
@@ -72,6 +78,49 @@ if ret:
             print("Line Locations:", lines)
 
 
+    def play_video():
+        while True:
+            ret, frame = video_cap.read()
+            if not ret:
+                break
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            pil_image = Image.fromarray(frame_rgb)
+            photo_image = ImageTk.PhotoImage(pil_image)
+            canvas.create_image(0, 0, image=photo_image, anchor=tk.NW)
+            canvas.update()
+            if cv2.waitKey(1) & 0xFF == ord('q'):  # Exit loop if 'q' key is pressed
+                break
+
+        video_cap.release()
+        cv2.destroyAllWindows()
+
+
+    def done_button_clicked():
+        global video_cap, lines  # Reference the global variables
+        app.destroy()  # Close the Tkinter window
+        if video_cap:
+            video_cap.release()  # Release the video capture
+        cv2.destroyAllWindows()  # Close any remaining cv2 windows
+
+        # Play the video using cv2.imshow()
+        video_cap = cv2.VideoCapture(video_url)
+        while True:
+            ret, frame = video_cap.read()
+            if not ret:
+                break
+
+            # Draw lines on the frame
+            for line_start, line_end, line_color in lines:
+                line_color_bgr = color_map.get(line_color, (0, 0, 0))  # Default to black if color not found
+                cv2.line(frame, line_start, line_end, line_color_bgr, 2)
+
+            cv2.imshow("Video Playback", frame)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+
+        cv2.destroyAllWindows()  # Close the cv2 window after playback is done
+
+
     def paint_canvas():
         canvas.delete("all")
         canvas.create_image(0, 0, image=photo_image, anchor=tk.NW)
@@ -85,10 +134,12 @@ if ret:
             canvas.create_line(start_point, end_point, fill=current_line_color, width=2)
 
         # Add the legend
-        canvas.create_text(width - 10, 10, anchor=tk.NE, text="Start counting line", fill="blue")
-        canvas.create_text(width - 10, 30, anchor=tk.NE, text="Stop counting line", fill="red")
+        canvas.create_text(width - 10, 10, anchor=tk.NE, text="Start counting line", fill="blue", font=("Helvetica", 16, "bold"))
+        canvas.create_text(width - 10, 30, anchor=tk.NE, text="Stop counting line", fill="red", font=("Helvetica", 16, "bold"))
 
 
+    done_button = tk.Button(app, text="Done", command=done_button_clicked)
+    done_button.pack()
     canvas.bind("<ButtonPress-1>", mouse_press)
     canvas.bind("<B1-Motion>", mouse_move)
     canvas.bind("<ButtonRelease-1>", mouse_release)
