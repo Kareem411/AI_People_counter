@@ -19,7 +19,7 @@ color_map = {
     "red": (0, 0, 255)}
 class_colors = {}
 
-model = YOLO("yolov8n.pt")
+model = YOLO("yolov8l.pt")
 
 # Tracking
 tracker = Sort(max_age=20, min_hits=3, iou_threshold=0.3)
@@ -164,15 +164,16 @@ if ret:
                             class_colors[cls] = tuple(np.random.randint(0, 255, 3).tolist())
                         color = class_colors[cls]
 
-                        # Draw bounding box and label with consistent color
-                        cvzone.cornerRect(img, (xmin, ymin, w, h), l=9, rt=5, colorR=color)
-                        cvzone.putTextRect(img, f'{currentClass} {conf}', (max(0, xmin), max(35, ymin)),
-                                           scale=0.6, thickness=1, offset=3)
-
                         currentArray = np.array([xmin, ymin, xmax, ymax, conf])
                         detections = np.vstack((detections, currentArray))
 
-            resultsTracker = tracker.update(detections)
+                        resultsTracker = tracker.update(detections)
+
+                        for result in resultsTracker:
+                            x1, x2, y1,y2, id = map(int, result)
+                            cvzone.cornerRect(img, (xmin, ymin, w, h), l=9, rt=5,colorC=color)
+                            cvzone.putTextRect(img, f'{id}', (max(0, xmin), max(35, ymin)),
+                                               scale=0.6, thickness=1, offset=3)
             cv2.imshow("Output", img)
             cv2.waitKey(1)
 
