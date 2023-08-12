@@ -13,6 +13,7 @@ video_url = "C:\\Users\\zadka\\Desktop\\Comp Vision Course\\REQ\\Project 2 - Peo
 video_cap = cv2.VideoCapture(video_url)
 ret, frame = video_cap.read()
 video_cap = None
+second_window = None
 lines = []
 limitsUp = [103, 161, 296, 161]
 limitsDown = [527, 489, 735, 489]
@@ -122,12 +123,8 @@ if ret:
         return [0, y_left, width, y_right]
 
 
-    def done_button_clicked():
-        global video_cap, lines, class_colors, limitsUp, limitsDown
-        app.destroy()  # Close the Tkinter window
-        if video_cap:
-            video_cap.release()  # Release the video capture
-        cv2.destroyAllWindows()  # Close any remaining cv2 windows
+    def calculate_mask_and_process_video():
+        global video_cap, lines, class_colors, limitsUp, limitsDown, people_crossed_up, people_crossed_down
 
         # Load the video again for processing the mask
         video_cap = cv2.VideoCapture(video_url)
@@ -221,6 +218,33 @@ if ret:
 
         video_cap.release()
         cv2.destroyAllWindows()
+
+
+    def press_me_button_clicked():
+        global second_window
+        if second_window:
+            second_window.destroy()  # Close the second window if it exists
+        calculate_mask_and_process_video()  # Continue with mask calculation and video processing
+
+
+    def done_button_clicked():
+        global second_window
+        app.withdraw()  # Hide the main window
+        if video_cap:
+            video_cap.release()  # Release the video capture
+        cv2.destroyAllWindows()  # Close any remaining cv2 windows
+
+        # Create a second window only if it doesn't exist
+        if not second_window:
+            second_window = tk.Toplevel()
+            second_window.title("Press Me Window")
+
+            # Add a label and button to the second window
+            press_me_label = tk.Label(second_window, text="Press the button below to continue:")
+            press_me_label.pack()
+
+            press_me_button = tk.Button(second_window, text="Press me", command=press_me_button_clicked)
+            press_me_button.pack()
 
 
     def paint_canvas():
