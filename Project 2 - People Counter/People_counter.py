@@ -17,12 +17,12 @@ second_window = None
 drawing_second = False
 start_point_second = None
 end_point_second = None
+current_line_color_second = None
 current_line_second = None  # Rename to avoid conflict
-current_line_color_second = "#AC2F75"  # Replace this with the desired color in hexadecimal format
 lines_second = []
 lines = []
-limitsUp = [103, 161, 296, 161]
-limitsDown = [527, 489, 735, 489]
+limitsUp = None
+limitsDown = None
 people_crossed_up = {}
 people_crossed_down = {}
 color_map = {
@@ -30,10 +30,10 @@ color_map = {
     "red": (0, 0, 255)}
 class_colors = {}
 
-model = YOLO("yolov8l.pt")
+model = YOLO("yolov5-deepsort.pt")
 
 # Tracking
-tracker = Sort(max_age=25, min_hits=3, iou_threshold=0.4)
+tracker = Sort(max_age=25, min_hits=10, iou_threshold=0.5)
 
 
 # Convert the frame to a PhotoImage for the background image
@@ -79,6 +79,13 @@ if ret:
             drawing_second = True
             start_point_second = (event.x, event.y)
             end_point_second = (event.x, event.y)
+
+            # Use red for the first line and blue for subsequent lines in the second window
+            if len(lines_second) == 0:
+                current_line_color_second = 'red'
+            else:
+                current_line_color_second = 'blue'
+
             current_line_second = None  # Clear the current line
             paint_canvas_2()  # Update the canvas after starting a new line
 
@@ -116,16 +123,25 @@ if ret:
             paint_canvas()
 
             # Print the locations of the lines
-            print("Line Locations:", lines)
+            print("Masking Line Locations:", lines)
 
 
     def mouse_release_second(event):
-        global drawing_second, current_line_second, lines_second, end_point_second
+        global drawing_second, current_line_second, lines_second, end_point_second, limitsUp, limitsDown
         if drawing_second and current_line_second:
             drawing_second = False
             end_point_second = (end_point_second[0], end_point_second[1])
             lines_second.append(current_line_second)
             paint_canvas_2()  # Update the canvas after adding the line
+
+            # Assign values of the first line in lines_second to limitsUp
+            if len(lines_second) >= 1:
+                limitsUp = [lines_second[0][0][0], lines_second[0][0][1], lines_second[0][1][0], lines_second[0][1][1]]
+
+            # Assign values of the second line in lines_second to limitsDown
+            if len(lines_second) >= 2:
+                limitsDown = [lines_second[1][0][0], lines_second[1][0][1], lines_second[1][1][0],
+                              lines_second[1][1][1]]
 
 
     def play_video():
@@ -145,20 +161,6 @@ if ret:
         cv2.destroyAllWindows()
 
 
-    def calculate_limits(line_start, line_end):
-        # Calculate the slope and y-intercept
-        m = (line_end[1] - line_start[1]) / (line_end[0] - line_start[0])
-        b = line_start[1] - m * line_start[0]
-
-        # Calculate y-coordinate where the line crosses the left edge of the frame
-        y_left = int(m * 0 + b)
-
-        # Calculate y-coordinate where the line crosses the right edge of the frame
-        y_right = int(m * width + b)
-
-        return [0, y_left, width, y_right]
-
-
     def calculate_mask_and_process_video():
         global video_cap, lines, class_colors, limitsUp, limitsDown, people_crossed_up, people_crossed_down
 
@@ -172,10 +174,8 @@ if ret:
         for line_start, line_end, line_color in lines:
             if line_color == "blue":
                 blue_line = line_start, line_end
-                limitsUp = calculate_limits(line_start, line_end)
             elif line_color == "red":
                 red_line = line_start, line_end
-                limitsDown = calculate_limits(line_start, line_end)
 
         # Calculate the region for the mask
         mask_region = np.array([
@@ -294,7 +294,6 @@ if ret:
     def paint_canvas_2():
         canvas_2.delete("all")
         canvas_2.create_image(0, 0, image=photo_image, anchor=tk.NW)
-        print("Second Window Line Locations: ",lines_second)
         for line_start, line_end, line_color in lines_second:
             canvas_2.create_line(line_start, line_end, fill=line_color, width=2)
 
