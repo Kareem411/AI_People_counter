@@ -14,6 +14,12 @@ video_cap = cv2.VideoCapture(video_url)
 ret, frame = video_cap.read()
 video_cap = None
 second_window = None
+drawing_second = False
+start_point_second = None
+end_point_second = None
+current_line_second = None  # Rename to avoid conflict
+current_line_color_second = "#AC2F75"  # Replace this with the desired color in hexadecimal format
+lines_second = []
 lines = []
 limitsUp = [103, 161, 296, 161]
 limitsDown = [527, 489, 735, 489]
@@ -45,6 +51,7 @@ if ret:
     drawing = False
     start_point = None
     end_point = None
+    canvas_2 = None
     current_line_color = "blue"  # Initialize color to blue
     lines = []  # Stores the drawn lines
     line_limit = 2  # Maximum number of lines
@@ -66,9 +73,19 @@ if ret:
             paint_canvas()
 
 
+    def mouse_press_second(event):
+        global drawing_second, start_point_second, end_point_second, current_line_color_second, current_line_second
+        if len(lines_second) < line_limit:
+            drawing_second = True
+            start_point_second = (event.x, event.y)
+            end_point_second = (event.x, event.y)
+            current_line_second = None  # Clear the current line
+            paint_canvas_2()  # Update the canvas after starting a new line
+
+
     def mouse_move(event):
         global drawing, end_point, current_line_color
-        if drawing:
+        if drawing:     # Leaving incase a new feature of adding lines is added
             end_point = (event.x, event.y)
 
             # Adjust the color while drawing
@@ -78,6 +95,16 @@ if ret:
                 current_line_color = "red"
 
             paint_canvas()
+
+
+    def mouse_move_second(event):
+        if drawing_second:
+            global end_point_second, current_line_second
+            end_point_second = (event.x, event.y)
+            canvas_2.delete("temp_line")
+            current_line_second = (start_point_second, end_point_second, current_line_color_second)
+            canvas_2.create_line(start_point_second, end_point_second, fill=current_line_color_second, width=2,
+                                 tags="temp_line")
 
 
     def mouse_release(event):
@@ -90,6 +117,15 @@ if ret:
 
             # Print the locations of the lines
             print("Line Locations:", lines)
+
+
+    def mouse_release_second(event):
+        global drawing_second, current_line_second, lines_second, end_point_second
+        if drawing_second and current_line_second:
+            drawing_second = False
+            end_point_second = (end_point_second[0], end_point_second[1])
+            lines_second.append(current_line_second)
+            paint_canvas_2()  # Update the canvas after adding the line
 
 
     def play_video():
@@ -228,27 +264,49 @@ if ret:
 
 
     def done_button_clicked():
-        global second_window
-        app.withdraw()  # Hide the main window
+        global second_window, canvas_2, lines_second
+        app.withdraw()
         if video_cap:
-            video_cap.release()  # Release the video capture
-        cv2.destroyAllWindows()  # Close any remaining cv2 windows
+            video_cap.release()
+        cv2.destroyAllWindows()
 
-        # Create a second window only if it doesn't exist
         if not second_window:
             second_window = tk.Toplevel()
             second_window.title("Counting Lines Window")
 
-            canvas_2 = tk.Canvas(second_window, width= width, height=height)
+            canvas_2 = tk.Canvas(second_window, width=width, height=height)
             canvas_2.create_image(0, 0, image=photo_image, anchor=tk.NW)
             canvas_2.pack()
 
-            # Add a label and button to the second window
             Counting_window_label = tk.Label(second_window, text="Mark a line indicating where to tally pedestrians.")
             Counting_window_label.pack()
 
             Counting_window_button = tk.Button(second_window, text="Continue", command=press_me_button_clicked)
             Counting_window_button.pack()
+
+            canvas_2.bind("<ButtonPress-1>", mouse_press_second)
+            canvas_2.bind("<B1-Motion>", mouse_move_second)
+            canvas_2.bind("<ButtonRelease-1>", mouse_release_second)
+
+            paint_canvas_2()  # Update the canvas initially
+
+
+    def paint_canvas_2():
+        canvas_2.delete("all")
+        canvas_2.create_image(0, 0, image=photo_image, anchor=tk.NW)
+        print("Second Window Line Locations: ",lines_second)
+        for line_start, line_end, line_color in lines_second:
+            canvas_2.create_line(line_start, line_end, fill=line_color, width=2)
+
+        if drawing_second:
+            canvas_2.create_line(start_point_second[0], start_point_second[1], end_point_second[0], end_point_second[1],
+                                 fill=current_line_color_second, width=2)
+
+
+        canvas_2.create_text(width - 10, 10, anchor=tk.NE, text="Mask Start line", fill="blue",
+                             font=("Helvetica", 16, "bold"))
+        canvas_2.create_text(width - 10, 30, anchor=tk.NE, text="Mask End line", fill="red",
+                             font=("Helvetica", 16, "bold"))
 
 
     def paint_canvas():
