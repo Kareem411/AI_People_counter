@@ -14,6 +14,10 @@ video_cap = cv2.VideoCapture(video_url)
 ret, frame = video_cap.read()
 video_cap = None
 lines = []
+limitsUp = [103, 161, 296, 161]
+limitsDown = [527, 489, 735, 489]
+people_crossed_up = {}
+people_crossed_down = {}
 color_map = {
     "blue": (255, 0, 0),  # BGR format
     "red": (0, 0, 255)}
@@ -22,7 +26,7 @@ class_colors = {}
 model = YOLO("yolov8l.pt")
 
 # Tracking
-tracker = Sort(max_age=20, min_hits=3, iou_threshold=0.3)
+tracker = Sort(max_age=25, min_hits=3, iou_threshold=0.4)
 
 
 # Convert the frame to a PhotoImage for the background image
@@ -104,8 +108,22 @@ if ret:
         cv2.destroyAllWindows()
 
 
+    def calculate_limits(line_start, line_end):
+        # Calculate the slope and y-intercept
+        m = (line_end[1] - line_start[1]) / (line_end[0] - line_start[0])
+        b = line_start[1] - m * line_start[0]
+
+        # Calculate y-coordinate where the line crosses the left edge of the frame
+        y_left = int(m * 0 + b)
+
+        # Calculate y-coordinate where the line crosses the right edge of the frame
+        y_right = int(m * width + b)
+
+        return [0, y_left, width, y_right]
+
+
     def done_button_clicked():
-        global video_cap, lines, class_colors  # Reference the global variables
+        global video_cap, lines, class_colors, limitsUp, limitsDown
         app.destroy()  # Close the Tkinter window
         if video_cap:
             video_cap.release()  # Release the video capture
@@ -121,8 +139,10 @@ if ret:
         for line_start, line_end, line_color in lines:
             if line_color == "blue":
                 blue_line = line_start, line_end
+                limitsUp = calculate_limits(line_start, line_end)
             elif line_color == "red":
                 red_line = line_start, line_end
+                limitsDown = calculate_limits(line_start, line_end)
 
         # Calculate the region for the mask
         mask_region = np.array([
@@ -170,10 +190,32 @@ if ret:
                         resultsTracker = tracker.update(detections)
 
                         for result in resultsTracker:
-                            x1, x2, y1,y2, id = map(int, result)
-                            cvzone.cornerRect(img, (xmin, ymin, w, h), l=9, rt=5,colorC=color)
-                            cvzone.putTextRect(img, f'{id}', (max(0, xmin), max(35, ymin)),
-                                               scale=0.6, thickness=1, offset=3)
+                            x1, y1, x2, y2, id = map(int, result)
+                            cx, cy = x1 + (x2 - x1) // 2, y1 + (y2 - y1) // 2
+                            cv2.circle(img, (cx, cy), 5, (255, 0, 255), cv2.FILLED)
+                            cvzone.cornerRect(img, (x1, y1, x2 - x1, y2 - y1), l=9, rt=5, colorC=color)
+                            cvzone.putTextRect(img, f'{id}', (max(0, x1), max(35, y1)),
+                                               scale=0.6, thickness=1, offset=5)
+
+                            # Check if the person's center crosses the 'limitsUp' line
+                            if limitsUp[0] < cx < limitsUp[2] and limitsUp[1] - 15 < cy < limitsUp[1] + 15:
+                                if id not in people_crossed_up:
+                                    people_crossed_up[id] = True
+                                    cv2.line(img, (limitsUp[0], limitsUp[1]), (limitsUp[2], limitsUp[3]), (0, 255, 0),
+                                             5)
+
+                            # Check if the person's center crosses the 'limitsDown' line
+                            if limitsDown[0] < cx < limitsDown[2] and limitsDown[1] - 15 < cy < limitsDown[1] + 15:
+                                if id not in people_crossed_down:
+                                    people_crossed_down[id] = True
+                                    cv2.line(img, (limitsDown[0], limitsDown[1]), (limitsDown[2], limitsDown[3]),
+                                             (0, 255, 0), 5)
+
+                        # Update the counts on the canvas
+                        cv2.putText(img, str(len(people_crossed_up)), (limitsUp[0], limitsUp[1] - 50),
+                                    cv2.FONT_HERSHEY_PLAIN, 3, (0, 255, 0), 3)
+                        cv2.putText(img, str(len(people_crossed_down)), (limitsDown[0], limitsDown[1] - 50),
+                                    cv2.FONT_HERSHEY_PLAIN, 3, (0, 255, 0), 3)
             cv2.imshow("Output", img)
             cv2.waitKey(1)
 
