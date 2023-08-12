@@ -237,14 +237,18 @@ if ret:
         # Create a second window only if it doesn't exist
         if not second_window:
             second_window = tk.Toplevel()
-            second_window.title("Press Me Window")
+            second_window.title("Counting Lines Window")
+
+            canvas_2 = tk.Canvas(second_window, width= width, height=height)
+            canvas_2.create_image(0, 0, image=photo_image, anchor=tk.NW)
+            canvas_2.pack()
 
             # Add a label and button to the second window
-            press_me_label = tk.Label(second_window, text="Press the button below to continue:")
-            press_me_label.pack()
+            Counting_window_label = tk.Label(second_window, text="Mark a line indicating where to tally pedestrians.")
+            Counting_window_label.pack()
 
-            press_me_button = tk.Button(second_window, text="Press me", command=press_me_button_clicked)
-            press_me_button.pack()
+            Counting_window_button = tk.Button(second_window, text="Continue", command=press_me_button_clicked)
+            Counting_window_button.pack()
 
 
     def paint_canvas():
@@ -260,8 +264,8 @@ if ret:
             canvas.create_line(start_point, end_point, fill=current_line_color, width=2)
 
         # Add the legend
-        canvas.create_text(width - 10, 10, anchor=tk.NE, text="Start counting line", fill="blue", font=("Helvetica", 16, "bold"))
-        canvas.create_text(width - 10, 30, anchor=tk.NE, text="Stop counting line", fill="red", font=("Helvetica", 16, "bold"))
+        canvas.create_text(width - 10, 10, anchor=tk.NE, text="Mask Start line", fill="blue", font=("Helvetica", 16, "bold"))
+        canvas.create_text(width - 10, 30, anchor=tk.NE, text="Mask End line", fill="red", font=("Helvetica", 16, "bold"))
 
 
     done_button = tk.Button(app, text="Done", command=done_button_clicked)
