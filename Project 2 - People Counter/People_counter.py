@@ -30,7 +30,7 @@ color_map = {
     "red": (0, 0, 255)}
 class_colors = {}
 
-model = YOLO("yolov5-deepsort.pt")
+model = YOLO("yolov8-large.pt")
 
 # Tracking
 tracker = Sort(max_age=25, min_hits=10, iou_threshold=0.5)
