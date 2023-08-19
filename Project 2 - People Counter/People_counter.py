@@ -6,10 +6,14 @@ from ultralytics import YOLO
 import cvzone
 from sort import *
 
-app = tk.Tk()
 
 # Load a frame from the video
-video_url = "C:\\Users\\zadka\\Desktop\\Comp Vision Course\\REQ\\Project 2 - People Counter\\Videos\\people.mp4"
+video_url = tk.simpledialog.askstring("Video URL", "Enter the video URL:")
+if video_url is None:
+    sys.exit(0)  # Exit the application if the user cancels
+
+app = tk.Tk()
+
 video_cap = cv2.VideoCapture(video_url)
 ret, frame = video_cap.read()
 video_cap = None
@@ -30,10 +34,11 @@ color_map = {
     "red": (0, 0, 255)}
 class_colors = {}
 
-model = YOLO("yolov8-large.pt")
+model = YOLO('yolov8s.pt')
+
 
 # Tracking
-tracker = Sort(max_age=25, min_hits=10, iou_threshold=0.5)
+tracker = Sort(max_age=20, min_hits=3, iou_threshold=0.1)
 
 
 # Convert the frame to a PhotoImage for the background image
@@ -203,7 +208,6 @@ if ret:
                 for box in boxes:
                     # Bounding Box
                     xmin, ymin, xmax, ymax = map(int, box.xyxy[0])
-                    w, h = xmax - xmin, ymax - ymin
 
                     # Confidence
                     conf = round(float(box.conf[0]), 2)
@@ -211,7 +215,7 @@ if ret:
                     cls = int(box.cls[0])
                     currentClass = model.names[cls]
 
-                    if currentClass == "person" and conf > 0.3:
+                    if currentClass == "person":
                         # Generate and store color for each class
                         if cls not in class_colors:
                             class_colors[cls] = tuple(np.random.randint(0, 255, 3).tolist())
@@ -278,10 +282,10 @@ if ret:
             canvas_2.create_image(0, 0, image=photo_image, anchor=tk.NW)
             canvas_2.pack()
 
-            Counting_window_label = tk.Label(second_window, text="Mark a line indicating where to tally pedestrians.")
+            Counting_window_label = tk.Label(second_window, text="Mark a line indicating where to tally pedestrians.", font=("Helvetica", 12))
             Counting_window_label.pack()
 
-            Counting_window_button = tk.Button(second_window, text="Continue", command=press_me_button_clicked)
+            Counting_window_button = tk.Button(second_window, text="Start Processing" , command=press_me_button_clicked, cursor="hand2")
             Counting_window_button.pack()
 
             canvas_2.bind("<ButtonPress-1>", mouse_press_second)
@@ -302,9 +306,9 @@ if ret:
                                  fill=current_line_color_second, width=2)
 
 
-        canvas_2.create_text(width - 10, 10, anchor=tk.NE, text="Mask Start line", fill="blue",
+        canvas_2.create_text(width - 10, 10, anchor=tk.NE, text="Counting line 1", fill="blue",
                              font=("Helvetica", 16, "bold"))
-        canvas_2.create_text(width - 10, 30, anchor=tk.NE, text="Mask End line", fill="red",
+        canvas_2.create_text(width - 10, 30, anchor=tk.NE, text="Counting Line 2", fill="red",
                              font=("Helvetica", 16, "bold"))
 
 
@@ -325,7 +329,7 @@ if ret:
         canvas.create_text(width - 10, 30, anchor=tk.NE, text="Mask End line", fill="red", font=("Helvetica", 16, "bold"))
 
 
-    done_button = tk.Button(app, text="Done", command=done_button_clicked)
+    done_button = tk.Button(app, text="Continue", command=done_button_clicked, relief=tk.RAISED, borderwidth=2, cursor="hand2")
     done_button.pack()
     canvas.bind("<ButtonPress-1>", mouse_press)
     canvas.bind("<B1-Motion>", mouse_move)
