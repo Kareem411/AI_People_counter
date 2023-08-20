@@ -34,7 +34,7 @@ color_map = {
     "red": (0, 0, 255)}
 class_colors = {}
 
-model = YOLO('yolov8s.pt')
+model = YOLO('yolov8n-seg.pt')
 
 
 # Tracking
@@ -166,6 +166,17 @@ if ret:
         cv2.destroyAllWindows()
 
 
+    def frame_masking(masks, video_frame):
+        overlay_color = (0, 0, 220)  # Bright Red
+        overlay_frame = np.zeros_like(video_frame)
+        for mask_coords in masks:
+            mask_coords = mask_coords.reshape((-1, 1, 2)).astype(np.int32)
+            cv2.fillPoly(overlay_frame, [mask_coords], overlay_color)
+        mask = overlay_frame.any(axis=2)  # Create a binary mask of the overlay frame
+        alpha = 0.45
+        video_frame[mask] = cv2.addWeighted(video_frame[mask], 1 - alpha, overlay_frame[mask], alpha, 0)
+
+
     def calculate_mask_and_process_video():
         global video_cap, lines, class_colors, limitsUp, limitsDown, people_crossed_up, people_crossed_down
 
@@ -204,6 +215,7 @@ if ret:
             detections = np.empty((0, 5))
 
             for r in results:
+                frame_masking(r.masks.xy, img)
                 boxes = r.boxes
                 for box in boxes:
                     # Bounding Box
