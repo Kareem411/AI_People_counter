@@ -1,14 +1,14 @@
 import sys
 import cv2
 import tkinter as tk
+from tkinter import simpledialog
 from PIL import Image, ImageTk
 from ultralytics import YOLO
 import cvzone
-from sort import *
-
+import numpy as np
 
 # Load a frame from the video
-video_url = tk.simpledialog.askstring("Video URL", "Enter the video URL:")
+video_url = simpledialog.askstring("Video URL", "Enter the video URL:")
 if video_url is None:
     sys.exit(0)  # Exit the application if the user cancels
 
@@ -27,18 +27,13 @@ lines_second = []
 lines = []
 limitsUp = None
 limitsDown = None
-people_crossed_up = {}
-people_crossed_down = {}
+people_crossed_up = set()
+people_crossed_down = set()
 color_map = {
     "blue": (255, 0, 0),  # BGR format
     "red": (0, 0, 255)}
-class_colors = {}
 
-model = YOLO('yolov8n-seg.pt')
-
-
-# Tracking
-tracker = Sort(max_age=20, min_hits=3, iou_threshold=0.1)
+model = YOLO('yolov8s-seg.pt')
 
 
 # Convert the frame to a PhotoImage for the background image
@@ -167,7 +162,7 @@ if ret:
 
 
     def frame_masking(masks, video_frame):
-        overlay_color = (0, 0, 220)  # Bright Red
+        overlay_color = (0, 0, 50)  # Bright Red
         overlay_frame = np.zeros_like(video_frame)
         for mask_coords in masks:
             mask_coords = mask_coords.reshape((-1, 1, 2)).astype(np.int32)
@@ -178,7 +173,7 @@ if ret:
 
 
     def calculate_mask_and_process_video():
-        global video_cap, lines, class_colors, limitsUp, limitsDown, people_crossed_up, people_crossed_down
+        global video_cap, lines, limitsUp, limitsDown, people_crossed_up, people_crossed_down
 
         # Load the video again for processing the mask
         video_cap = cv2.VideoCapture(video_url)
@@ -210,55 +205,34 @@ if ret:
 
             imgRegion = cv2.bitwise_and(img, img, mask=mask)
 
-            results = model(imgRegion, stream=True)
-
-            detections = np.empty((0, 5))
+            results = model.track(imgRegion, stream=False)
 
             for r in results:
-                frame_masking(r.masks.xy, img)
-                boxes = r.boxes
-                for box in boxes:
-                    # Bounding Box
-                    xmin, ymin, xmax, ymax = map(int, box.xyxy[0])
+                if int(r.boxes.cls[0]) == 0:    # Class ID 0 represents "person"
+                    frame_masking(r.masks.xy, img)
+                    for box in r.boxes:
+                        xmin, ymin, xmax, ymax = map(int, box.xyxy[0])
+                        cx, cy = xmin + (xmax - xmin) // 2, ymin + (ymax - ymin) // 2
+                        cv2.circle(img, (cx, cy), 5, (255, 0, 255), cv2.FILLED)
+                        cvzone.cornerRect(img, (xmin, ymin, xmax - xmin, ymax - ymin), l=9, rt=5, colorC=(0, 0, 220))
 
-                    # Confidence
-                    conf = round(float(box.conf[0]), 2)
-                    # Class Name
-                    cls = int(box.cls[0])
-                    currentClass = model.names[cls]
+                        # Confidence
+                        conf = round(float(box.conf[0]), 2)
+                        det_id = int(box.id)
+                        cvzone.putTextRect(img, f'{conf,det_id}   Person', (max(0, xmin), max(35, ymin)), scale=0.6, thickness=1, offset=5)
 
-                    if currentClass == "person":
-                        # Generate and store color for each class
-                        if cls not in class_colors:
-                            class_colors[cls] = tuple(np.random.randint(0, 255, 3).tolist())
-                        color = class_colors[cls]
+                        # Check if the person's center crosses the 'limitsUp' line
 
-                        currentArray = np.array([xmin, ymin, xmax, ymax, conf])
-                        detections = np.vstack((detections, currentArray))
-
-                        resultsTracker = tracker.update(detections)
-
-                        for result in resultsTracker:
-                            x1, y1, x2, y2, id = map(int, result)
-                            cx, cy = x1 + (x2 - x1) // 2, y1 + (y2 - y1) // 2
-                            cv2.circle(img, (cx, cy), 5, (255, 0, 255), cv2.FILLED)
-                            cvzone.cornerRect(img, (x1, y1, x2 - x1, y2 - y1), l=9, rt=5, colorC=color)
-                            cvzone.putTextRect(img, f'{id}', (max(0, x1), max(35, y1)),
-                                               scale=0.6, thickness=1, offset=5)
-
-                            # Check if the person's center crosses the 'limitsUp' line
-                            if limitsUp[0] < cx < limitsUp[2] and limitsUp[1] - 15 < cy < limitsUp[1] + 15:
-                                if id not in people_crossed_up:
-                                    people_crossed_up[id] = True
-                                    cv2.line(img, (limitsUp[0], limitsUp[1]), (limitsUp[2], limitsUp[3]), (0, 255, 0),
-                                             5)
+                        if limitsUp[0] < cx < limitsUp[2] and limitsUp[1] - 15 < cy < limitsUp[1] + 15:
+                            if det_id not in people_crossed_up:
+                                people_crossed_up.add(det_id)
+                                cv2.line(img, (limitsUp[0], limitsUp[1]), (limitsUp[2], limitsUp[3]), (0, 255, 0), 5)
 
                             # Check if the person's center crosses the 'limitsDown' line
                             if limitsDown[0] < cx < limitsDown[2] and limitsDown[1] - 15 < cy < limitsDown[1] + 15:
-                                if id not in people_crossed_down:
-                                    people_crossed_down[id] = True
-                                    cv2.line(img, (limitsDown[0], limitsDown[1]), (limitsDown[2], limitsDown[3]),
-                                             (0, 255, 0), 5)
+                                if det_id not in people_crossed_down:
+                                    people_crossed_down.add(det_id)
+                                    cv2.line(img, (limitsDown[0], limitsDown[1]), (limitsDown[2], limitsDown[3]), (0, 255, 0), 5)
 
                         # Update the counts on the canvas
                         cv2.putText(img, str(len(people_crossed_up)), (limitsUp[0], limitsUp[1] - 50),
