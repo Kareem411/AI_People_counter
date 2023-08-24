@@ -33,7 +33,7 @@ color_map = {
     "blue": (255, 0, 0),  # BGR format
     "red": (0, 0, 255)}
 
-model = YOLO('yolov8s-seg.pt')
+model = YOLO('yolov8m-seg.pt')
 
 
 # Convert the frame to a PhotoImage for the background image
@@ -205,7 +205,7 @@ if ret:
 
             imgRegion = cv2.bitwise_and(img, img, mask=mask)
 
-            results = model.track(imgRegion, stream=False)
+            results = model.track(source=imgRegion, stream=False, show=False, tracker="bytetrack.yaml")
 
             for r in results:
                 if int(r.boxes.cls[0]) == 0:    # Class ID 0 represents "person"
@@ -232,7 +232,8 @@ if ret:
                             if limitsDown[0] < cx < limitsDown[2] and limitsDown[1] - 15 < cy < limitsDown[1] + 15:
                                 if det_id not in people_crossed_down:
                                     people_crossed_down.add(det_id)
-                                    cv2.line(img, (limitsDown[0], limitsDown[1]), (limitsDown[2], limitsDown[3]), (0, 255, 0), 5)
+                                    cv2.line(img, (limitsDown[0], limitsDown[1]), (limitsDown[2], limitsDown[3]),
+                                             (0, 255, 0), 5)
 
                         # Update the counts on the canvas
                         cv2.putText(img, str(len(people_crossed_up)), (limitsUp[0], limitsUp[1] - 50),
