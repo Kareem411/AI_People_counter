@@ -7,10 +7,18 @@ from deep_sort_realtime.deepsort_tracker import DeepSort
 from ultralytics import YOLO
 import numpy as np
 
-# Load a frame from the video
-video_url = simpledialog.askstring("Video URL", "Enter the video URL:")
-if video_url is None:
-    sys.exit(0)  # Exit the application if the user cancels
+
+while True:
+    video_url = simpledialog.askstring("Video URL", "Enter the video URL:")
+    if video_url is None:
+        sys.exit(0)  # Exit the application if the user cancels
+    video_cap = cv2.VideoCapture(video_url)
+    if video_cap.isOpened():
+        video_cap.release()  # Release the video capture
+        break  # Exit the loop if the provided URL is a valid video file
+    else:
+        simpledialog.messagebox.showerror("Invalid URL", "The provided URL is not a valid video file path. Please try again.")
+
 
 app = tk.Tk()
 
@@ -34,7 +42,7 @@ color_map = {
     "red": (0, 0, 255)}
 params = {
     "max_iou_distance": 0.7,
-    "max_age": 20,
+    "max_age": 15,
     "n_init": 1,
     "nms_max_overlap": 0.1,
     "max_cosine_distance": 0.2,
@@ -46,7 +54,7 @@ params = {
     "embedder_gpu": True,
     "polygon": False,
 }
-model = YOLO('yolov8n.pt')
+model = YOLO('yolov8s.pt')
 tracker = DeepSort(**params)
 
 
@@ -192,9 +200,11 @@ if ret:
 
         # Load the video again for processing the mask
         video_cap = cv2.VideoCapture(video_url)
-
+        # Initializing the variable with an empty dictionary
+        tracker_detections = {}
         # Define a blank mask
         mask = np.zeros((height, width), dtype=np.uint8)
+        masked_frames = []
 
         # Draw the region between the blue and red lines on the mask
         for line_start, line_end, line_color in lines:
@@ -224,15 +234,14 @@ if ret:
             del imgRegion
             for r in results:
                 detections = []
-                if int(r.boxes.cls[0]) == 0:    # Class ID 0 represents "person"
-                    for box in r.boxes:
-                        conf = round(float(box.conf[0]), 2)
-                        if conf > 0.3:
-                            xmin, ymin, xmax, ymax = map(int, box.xyxy[0])
-                            detection = ([xmin, ymin, xmax - xmin, ymax - ymin], conf, "Person")
-                            detections.append(detection)
+                for box in r.boxes:
+                    conf = round(float(box.conf[0]), 2)
+                    if conf > 0.3 and (int(box.cls[0]) == 0):    # Class ID 0 represents "person"
+                        xmin, ymin, xmax, ymax = map(int, box.xyxy[0])
+                        detection = ([xmin, ymin, xmax - xmin, ymax - ymin], conf, "Person")
+                        detections.append(detection)
 
-                    tracker_detections = tracking(detections, frame)
+                tracker_detections = tracking(detections, frame)
             for tracker_id, tracker_bbox in tracker_detections.items():
                 x, y, x_max, y_max = tracker_bbox
                 cx, cy = x + (x_max - x) // 2, y + (y_max - y) // 2
@@ -268,11 +277,42 @@ if ret:
         cv2.destroyAllWindows()
 
 
-    def press_me_button_clicked():
-        global second_window
+    def continue_to_mask_button():
+        global second_window, canvas_2, lines_second
         if second_window:
             second_window.destroy()  # Close the second window if it exists
-        calculate_mask_and_process_video()  # Continue with mask calculation and video processing
+
+        # Create a new window to display the mask
+        mask_display_window = tk.Toplevel()
+        mask_display_window.title("Mask Review")
+
+        # Apply the mask to the first frame to show the mask overlay
+        mask_frame = cv2.cvtColor(frame.copy(), cv2.COLOR_BGR2RGB)  # Copy the frame to avoid modifying the original
+        mask = np.zeros((height, width), dtype=np.uint8)
+        for line_start, line_end, _ in lines:
+            cv2.line(mask, line_start, line_end, (255, 255, 255), 2)  # Draw the lines on the mask
+        mask_frame = cv2.bitwise_and(mask_frame, mask_frame, mask=mask)
+
+        # Convert the frame to a PhotoImage for display in the tkinter window
+        pil_mask_frame = Image.fromarray(mask_frame)
+        mask_photo = ImageTk.PhotoImage(pil_mask_frame)
+
+        mask_canvas = tk.Canvas(mask_display_window, width=width, height=height)
+        mask_canvas.create_image(0, 0, image=mask_photo, anchor=tk.NW)
+        mask_canvas.pack()
+
+        # Ask the user whether to continue or redo
+        user_response = simpledialog.askstring("Mask Review", "Do you want to continue with this mask? (yes/no)")
+        if user_response and user_response.lower() == "yes":
+            # Continue with processing or any other logic you want
+            print("Continuing with the mask.")
+            mask_display_window.destroy()  # Close the mask display window
+            # Calculate the mask and process the video
+            calculate_mask_and_process_video()
+        else:
+            # Redo the mask drawing process or handle as needed
+            print("Redoing the mask drawing.")
+            mask_display_window.destroy()  # Close the mask display window
 
 
     def done_button_clicked():
@@ -293,7 +333,7 @@ if ret:
             Counting_window_label = tk.Label(second_window, text="Mark a line indicating where to tally pedestrians.", font=("Helvetica", 12))
             Counting_window_label.pack()
 
-            Counting_window_button = tk.Button(second_window, text="Start Processing" , command=press_me_button_clicked, cursor="hand2")
+            Counting_window_button = tk.Button(second_window, text="Start Processing" , command=continue_to_mask_button, cursor="hand2")
             Counting_window_button.pack()
 
             canvas_2.bind("<ButtonPress-1>", mouse_press_second)
