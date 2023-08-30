@@ -14,7 +14,7 @@ while True:
         sys.exit(0)  # Exit the application if the user cancels
     video_cap = cv2.VideoCapture(video_url)
     if video_cap.isOpened():
-        video_cap.release()  # Release the video capture
+        video_cap.release()  # Closing the video capture
         break  # Exit the loop if the provided URL is a valid video file
     else:
         simpledialog.messagebox.showerror("Invalid URL", "The provided URL is not a valid video file path. Please try again.")
@@ -30,7 +30,7 @@ drawing_second = False
 start_point_second = None
 end_point_second = None
 current_line_color_second = None
-current_line_second = None  # Rename to avoid conflict
+current_line_second = None
 lines_second = []
 lines = []
 limitsUp = None
@@ -38,7 +38,7 @@ limitsDown = None
 people_crossed_up = set()
 people_crossed_down = set()
 color_map = {
-    "blue": (255, 0, 0),  # BGR format
+    "blue": (255, 0, 0),
     "red": (0, 0, 255)}
 params = {
     "max_iou_distance": 0.7,
