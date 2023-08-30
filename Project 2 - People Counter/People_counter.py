@@ -17,7 +17,10 @@ while True:
         video_cap.release()  # Closing the video capture
         break  # Exit the loop if the provided URL is a valid video file
     else:
-        simpledialog.messagebox.showerror("Invalid URL", "The provided URL is not a valid video file path. Please try again.")
+        simpledialog.messagebox.showerror(
+            "Invalid URL",
+            "The provided URL is not a valid video file path. Please try again.",
+        )
 
 
 app = tk.Tk()
@@ -37,9 +40,7 @@ limitsUp = None
 limitsDown = None
 people_crossed_up = set()
 people_crossed_down = set()
-color_map = {
-    "blue": (255, 0, 0),
-    "red": (0, 0, 255)}
+color_map = {"blue": (255, 0, 0), "red": (0, 0, 255)}
 params = {
     "max_iou_distance": 0.7,
     "max_age": 20,
@@ -54,7 +55,7 @@ params = {
     "embedder_gpu": True,
     "polygon": False,
 }
-model = YOLO('yolov8s.pt')
+model = YOLO("yolov8s.pt")
 tracker = DeepSort(**params)
 
 
@@ -78,7 +79,6 @@ if ret:
     lines = []  # Stores the drawn lines
     line_limit = 2  # Maximum number of lines
 
-
     def mouse_press(event):
         global drawing, start_point, end_point, current_line_color
         if len(lines) < line_limit:
@@ -94,7 +94,6 @@ if ret:
 
             paint_canvas()
 
-
     def mouse_press_second(event):
         global drawing_second, start_point_second, end_point_second, current_line_color_second, current_line_second
         if len(lines_second) < line_limit:
@@ -104,17 +103,16 @@ if ret:
 
             # Use red for the first line and blue for subsequent lines in the second window
             if len(lines_second) == 0:
-                current_line_color_second = 'red'
+                current_line_color_second = "red"
             else:
-                current_line_color_second = 'blue'
+                current_line_color_second = "blue"
 
             current_line_second = None  # Clear the current line
             paint_canvas_2()  # Update the canvas after starting a new line
 
-
     def mouse_move(event):
         global drawing, end_point, current_line_color
-        if drawing:     # Leaving incase a new feature of adding lines is added
+        if drawing:  # Leaving incase a new feature of adding lines is added
             end_point = (event.x, event.y)
 
             # Adjust the color while drawing
@@ -125,16 +123,23 @@ if ret:
 
             paint_canvas()
 
-
     def mouse_move_second(event):
         if drawing_second:
             global end_point_second, current_line_second
             end_point_second = (event.x, event.y)
             canvas_2.delete("temp_line")
-            current_line_second = (start_point_second, end_point_second, current_line_color_second)
-            canvas_2.create_line(start_point_second, end_point_second, fill=current_line_color_second, width=2,
-                                 tags="temp_line")
-
+            current_line_second = (
+                start_point_second,
+                end_point_second,
+                current_line_color_second,
+            )
+            canvas_2.create_line(
+                start_point_second,
+                end_point_second,
+                fill=current_line_color_second,
+                width=2,
+                tags="temp_line",
+            )
 
     def mouse_release(event):
         global drawing, start_point, end_point, current_line_color
@@ -147,7 +152,6 @@ if ret:
             # Print the locations of the lines
             print("Masking Line Locations:", lines)
 
-
     def mouse_release_second(event):
         global drawing_second, current_line_second, lines_second, end_point_second, limitsUp, limitsDown
         if drawing_second and current_line_second:
@@ -158,13 +162,21 @@ if ret:
 
             # Assign values of the first line in lines_second to limitsUp
             if len(lines_second) >= 1:
-                limitsUp = [lines_second[0][0][0], lines_second[0][0][1], lines_second[0][1][0], lines_second[0][1][1]]
+                limitsUp = [
+                    lines_second[0][0][0],
+                    lines_second[0][0][1],
+                    lines_second[0][1][0],
+                    lines_second[0][1][1],
+                ]
 
             # Assign values of the second line in lines_second to limitsDown
             if len(lines_second) >= 2:
-                limitsDown = [lines_second[1][0][0], lines_second[1][0][1], lines_second[1][1][0],
-                              lines_second[1][1][1]]
-
+                limitsDown = [
+                    lines_second[1][0][0],
+                    lines_second[1][0][1],
+                    lines_second[1][1][0],
+                    lines_second[1][1][1],
+                ]
 
     def play_video():
         while True:
@@ -176,15 +188,15 @@ if ret:
             photo_image = ImageTk.PhotoImage(pil_image)
             canvas.create_image(0, 0, image=photo_image, anchor=tk.NW)
             canvas.update()
-            if cv2.waitKey(1) & 0xFF == ord('q'):  # Exit loop if 'q' key is pressed
+            if cv2.waitKey(1) & 0xFF == ord("q"):  # Exit loop if 'q' key is pressed
                 break
 
         video_cap.release()
         cv2.destroyAllWindows()
 
     def tracking(detections, frame):
-        tracks = tracker.update_tracks(detections,
-                                       frame=frame)  # detections expected to be a list of detections, each in tuples of ( [left,top,w,h], confidence, detection_class
+        # detections expected to be a list of detections, each in tuples of ( [left,top,w,h], confidence, detection_class
+        tracks = tracker.update_tracks(detections, frame=frame)
         det = {}
         for track in tracks:
             if not track.is_confirmed():
@@ -193,7 +205,6 @@ if ret:
             xmin, ymin, w, h = map(lambda x: int(x), track.to_ltrb())
             det[track_id] = [xmin, ymin, w, h]
         return det
-
 
     def calculate_mask_and_process_video():
         global video_cap, lines, limitsUp, limitsDown, people_crossed_up, people_crossed_down
@@ -213,12 +224,15 @@ if ret:
                 red_line = line_start, line_end
 
         # Calculate the region for the mask
-        mask_region = np.array([
-            [blue_line[0][0], blue_line[0][1]],
-            [blue_line[1][0], blue_line[1][1]],
-            [red_line[1][0], red_line[1][1]],
-            [red_line[0][0], red_line[0][1]]
-        ], dtype=np.int32)
+        mask_region = np.array(
+            [
+                [blue_line[0][0], blue_line[0][1]],
+                [blue_line[1][0], blue_line[1][1]],
+                [red_line[1][0], red_line[1][1]],
+                [red_line[0][0], red_line[0][1]],
+            ],
+            dtype=np.int32,
+        )
         cv2.fillPoly(mask, [mask_region], 255)
 
         # Apply the mask to each frame
@@ -235,9 +249,15 @@ if ret:
                 detections = []
                 for box in r.boxes:
                     conf = round(float(box.conf[0]), 2)
-                    if conf > 0.3 and (int(box.cls[0]) == 0):    # Class ID 0 represents "person"
+                    if conf > 0.3 and (
+                        int(box.cls[0]) == 0
+                    ):  # Class ID 0 represents "person"
                         xmin, ymin, xmax, ymax = map(int, box.xyxy[0])
-                        detection = ([xmin, ymin, xmax - xmin, ymax - ymin], conf, "Person")
+                        detection = (
+                            [xmin, ymin, xmax - xmin, ymax - ymin],
+                            conf,
+                            "Person",
+                        )
                         detections.append(detection)
 
                 tracker_detections = tracking(detections, frame)
@@ -247,34 +267,73 @@ if ret:
 
                 cv2.rectangle(img, (x, y, x_max - x, y_max - y), (0, 0, 200), 3)
                 text_x, text_y = max(0, x), max(35, y - 5)
-                cv2.putText(img, f"Person ID: {tracker_id}", (text_x, text_y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 200), 2, cv2.LINE_AA)
+                cv2.putText(
+                    img,
+                    f"Person ID: {tracker_id}",
+                    (text_x, text_y),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.5,
+                    (0, 0, 200),
+                    2,
+                    cv2.LINE_AA,
+                )
                 cv2.circle(img, (cx, cy), 5, (255, 0, 255), cv2.FILLED)
 
                 # Check if the person's center crosses the 'limitsUp' line
-                if limitsUp[0] < cx < limitsUp[2] and limitsUp[1] - 15 < cy < limitsUp[1] + 15:
+                if (
+                    limitsUp[0] < cx < limitsUp[2]
+                    and limitsUp[1] - 15 < cy < limitsUp[1] + 15
+                ):
                     if tracker_id not in people_crossed_up:
                         people_crossed_up.add(tracker_id)
-                        cv2.line(img, (limitsUp[0], limitsUp[1]), (limitsUp[2], limitsUp[3]), (0, 255, 0), 5)
+                        cv2.line(
+                            img,
+                            (limitsUp[0], limitsUp[1]),
+                            (limitsUp[2], limitsUp[3]),
+                            (0, 255, 0),
+                            5,
+                        )
 
                 # Check if the person's center crosses the 'limitsDown' line
-                if limitsDown[0] < cx < limitsDown[2] and limitsDown[1] - 15 < cy < limitsDown[1] + 15:
+                if (
+                    limitsDown[0] < cx < limitsDown[2]
+                    and limitsDown[1] - 15 < cy < limitsDown[1] + 15
+                ):
                     if tracker_id not in people_crossed_down:
                         people_crossed_down.add(tracker_id)
-                        cv2.line(img, (limitsDown[0], limitsDown[1]), (limitsDown[2], limitsDown[3]),
-                                 (0, 255, 0), 5)
+                        cv2.line(
+                            img,
+                            (limitsDown[0], limitsDown[1]),
+                            (limitsDown[2], limitsDown[3]),
+                            (0, 255, 0),
+                            5,
+                        )
 
                 # Update the counts on the canvas
-                cv2.putText(img, str(len(people_crossed_up)), (limitsUp[0], limitsUp[1] - 50),
-                            cv2.FONT_HERSHEY_PLAIN, 3, (0, 255, 0), 3)
-                cv2.putText(img, str(len(people_crossed_down)), (limitsDown[0], limitsDown[1] - 50),
-                            cv2.FONT_HERSHEY_PLAIN, 3, (0, 255, 0), 3)
+                cv2.putText(
+                    img,
+                    str(len(people_crossed_up)),
+                    (limitsUp[0], limitsUp[1] - 50),
+                    cv2.FONT_HERSHEY_PLAIN,
+                    3,
+                    (0, 255, 0),
+                    3,
+                )
+                cv2.putText(
+                    img,
+                    str(len(people_crossed_down)),
+                    (limitsDown[0], limitsDown[1] - 50),
+                    cv2.FONT_HERSHEY_PLAIN,
+                    3,
+                    (0, 255, 0),
+                    3,
+                )
 
             cv2.imshow("Output", img)
             cv2.waitKey(1)
 
         video_cap.release()
         cv2.destroyAllWindows()
-
 
     def continue_to_mask_button():
         global second_window, canvas_2, lines_second
@@ -296,12 +355,15 @@ if ret:
                 red_line = line_start, line_end
 
         # Calculate the region for the mask
-        mask_region = np.array([
-            [blue_line[0][0], blue_line[0][1]],
-            [blue_line[1][0], blue_line[1][1]],
-            [red_line[1][0], red_line[1][1]],
-            [red_line[0][0], red_line[0][1]]
-        ], dtype=np.int32)
+        mask_region = np.array(
+            [
+                [blue_line[0][0], blue_line[0][1]],
+                [blue_line[1][0], blue_line[1][1]],
+                [red_line[1][0], red_line[1][1]],
+                [red_line[0][0], red_line[0][1]],
+            ],
+            dtype=np.int32,
+        )
         cv2.fillPoly(mask, [mask_region], 255)
 
         # Apply the mask to the first frame to show the mask overlay
@@ -316,7 +378,9 @@ if ret:
         mask_canvas.pack()
 
         # Ask the user whether to continue or redo
-        user_response = simpledialog.askstring("Mask Review", "Do you want to continue with this mask? (yes/no)")
+        user_response = simpledialog.askstring(
+            "Mask Review", "Do you want to continue with this mask? (yes/no)"
+        )
         if user_response and user_response.lower() == "yes":
             # Continue with processing or any other logic you want
             print("Continuing with the mask.")
@@ -327,7 +391,6 @@ if ret:
             # Redo the mask drawing process or handle as needed
             print("Redoing the mask drawing.")
             mask_display_window.destroy()  # Close the mask display window
-
 
     def done_button_clicked():
         global second_window, canvas_2, lines_second
@@ -344,10 +407,19 @@ if ret:
             canvas_2.create_image(0, 0, image=photo_image, anchor=tk.NW)
             canvas_2.pack()
 
-            Counting_window_label = tk.Label(second_window, text="Mark a line indicating where to tally pedestrians.", font=("Helvetica", 12))
+            Counting_window_label = tk.Label(
+                second_window,
+                text="Mark a line indicating where to tally pedestrians.",
+                font=("Helvetica", 12),
+            )
             Counting_window_label.pack()
 
-            Counting_window_button = tk.Button(second_window, text="Start Processing" , command=continue_to_mask_button, cursor="hand2")
+            Counting_window_button = tk.Button(
+                second_window,
+                text="Start Processing",
+                command=continue_to_mask_button,
+                cursor="hand2",
+            )
             Counting_window_button.pack()
 
             canvas_2.bind("<ButtonPress-1>", mouse_press_second)
@@ -356,7 +428,6 @@ if ret:
 
             paint_canvas_2()  # Update the canvas initially
 
-
     def paint_canvas_2():
         canvas_2.delete("all")
         canvas_2.create_image(0, 0, image=photo_image, anchor=tk.NW)
@@ -364,15 +435,31 @@ if ret:
             canvas_2.create_line(line_start, line_end, fill=line_color, width=2)
 
         if drawing_second:
-            canvas_2.create_line(start_point_second[0], start_point_second[1], end_point_second[0], end_point_second[1],
-                                 fill=current_line_color_second, width=2)
+            canvas_2.create_line(
+                start_point_second[0],
+                start_point_second[1],
+                end_point_second[0],
+                end_point_second[1],
+                fill=current_line_color_second,
+                width=2,
+            )
 
-
-        canvas_2.create_text(width - 10, 10, anchor=tk.NE, text="Counting line 1", fill="blue",
-                             font=("Helvetica", 16, "bold"))
-        canvas_2.create_text(width - 10, 30, anchor=tk.NE, text="Counting Line 2", fill="red",
-                             font=("Helvetica", 16, "bold"))
-
+        canvas_2.create_text(
+            width - 10,
+            10,
+            anchor=tk.NE,
+            text="Counting line 1",
+            fill="blue",
+            font=("Helvetica", 16, "bold"),
+        )
+        canvas_2.create_text(
+            width - 10,
+            30,
+            anchor=tk.NE,
+            text="Counting Line 2",
+            fill="red",
+            font=("Helvetica", 16, "bold"),
+        )
 
     def paint_canvas():
         canvas.delete("all")
@@ -387,11 +474,31 @@ if ret:
             canvas.create_line(start_point, end_point, fill=current_line_color, width=2)
 
         # Add the legend
-        canvas.create_text(width - 10, 10, anchor=tk.NE, text="Mask Start line", fill="blue", font=("Helvetica", 16, "bold"))
-        canvas.create_text(width - 10, 30, anchor=tk.NE, text="Mask End line", fill="red", font=("Helvetica", 16, "bold"))
+        canvas.create_text(
+            width - 10,
+            10,
+            anchor=tk.NE,
+            text="Mask Start line",
+            fill="blue",
+            font=("Helvetica", 16, "bold"),
+        )
+        canvas.create_text(
+            width - 10,
+            30,
+            anchor=tk.NE,
+            text="Mask End line",
+            fill="red",
+            font=("Helvetica", 16, "bold"),
+        )
 
-
-    done_button = tk.Button(app, text="Continue", command=done_button_clicked, relief=tk.RAISED, borderwidth=2, cursor="hand2")
+    done_button = tk.Button(
+        app,
+        text="Continue",
+        command=done_button_clicked,
+        relief=tk.RAISED,
+        borderwidth=2,
+        cursor="hand2",
+    )
     done_button.pack()
     canvas.bind("<ButtonPress-1>", mouse_press)
     canvas.bind("<B1-Motion>", mouse_move)
