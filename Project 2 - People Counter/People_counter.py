@@ -42,7 +42,7 @@ color_map = {
     "red": (0, 0, 255)}
 params = {
     "max_iou_distance": 0.7,
-    "max_age": 15,
+    "max_age": 20,
     "n_init": 1,
     "nms_max_overlap": 0.1,
     "max_cosine_distance": 0.2,
@@ -204,7 +204,6 @@ if ret:
         tracker_detections = {}
         # Define a blank mask
         mask = np.zeros((height, width), dtype=np.uint8)
-        masked_frames = []
 
         # Draw the region between the blue and red lines on the mask
         for line_start, line_end, line_color in lines:
@@ -230,7 +229,7 @@ if ret:
 
             imgRegion = cv2.bitwise_and(img, img, mask=mask)
 
-            results = model.track(source=imgRegion, stream=False, show=False, tracker="bytetrack.yaml")
+            results = model.track(source=imgRegion, stream=False, show=False)
             del imgRegion
             for r in results:
                 detections = []
@@ -248,7 +247,7 @@ if ret:
 
                 cv2.rectangle(img, (x, y, x_max - x, y_max - y), (0, 0, 200), 3)
                 text_x, text_y = max(0, x), max(35, y - 5)
-                cv2.putText(frame, f"Person ID: {tracker_id}", (text_x, text_y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 200), 2)
+                cv2.putText(img, f"Person ID: {tracker_id}", (text_x, text_y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 200), 2, cv2.LINE_AA)
                 cv2.circle(img, (cx, cy), 5, (255, 0, 255), cv2.FILLED)
 
                 # Check if the person's center crosses the 'limitsUp' line
@@ -286,12 +285,27 @@ if ret:
         mask_display_window = tk.Toplevel()
         mask_display_window.title("Mask Review")
 
-        # Apply the mask to the first frame to show the mask overlay
-        mask_frame = cv2.cvtColor(frame.copy(), cv2.COLOR_BGR2RGB)  # Copy the frame to avoid modifying the original
+        # Define a blank mask
         mask = np.zeros((height, width), dtype=np.uint8)
-        for line_start, line_end, _ in lines:
-            cv2.line(mask, line_start, line_end, (255, 255, 255), 2)  # Draw the lines on the mask
-        mask_frame = cv2.bitwise_and(mask_frame, mask_frame, mask=mask)
+
+        # Draw the region between the blue and red lines on the mask
+        for line_start, line_end, line_color in lines:
+            if line_color == "blue":
+                blue_line = line_start, line_end
+            elif line_color == "red":
+                red_line = line_start, line_end
+
+        # Calculate the region for the mask
+        mask_region = np.array([
+            [blue_line[0][0], blue_line[0][1]],
+            [blue_line[1][0], blue_line[1][1]],
+            [red_line[1][0], red_line[1][1]],
+            [red_line[0][0], red_line[0][1]]
+        ], dtype=np.int32)
+        cv2.fillPoly(mask, [mask_region], 255)
+
+        # Apply the mask to the first frame to show the mask overlay
+        mask_frame = cv2.bitwise_and(frame.copy(), frame.copy(), mask=mask)
 
         # Convert the frame to a PhotoImage for display in the tkinter window
         pil_mask_frame = Image.fromarray(mask_frame)
@@ -308,7 +322,7 @@ if ret:
             print("Continuing with the mask.")
             mask_display_window.destroy()  # Close the mask display window
             # Calculate the mask and process the video
-            calculate_mask_and_process_video()
+            calculate_mask_and_process_video()  # Start processing the video
         else:
             # Redo the mask drawing process or handle as needed
             print("Redoing the mask drawing.")
