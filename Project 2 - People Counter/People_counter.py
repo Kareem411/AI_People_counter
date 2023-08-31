@@ -1,12 +1,13 @@
 import sys
-import cv2
 import tkinter as tk
 from tkinter import simpledialog
-from PIL import Image, ImageTk
-from deep_sort_realtime.deepsort_tracker import DeepSort
-from ultralytics import YOLO
+import cv2
 import numpy as np
-import cProfile
+from PIL import Image, ImageTk
+from ultralytics import YOLO
+
+# Importing created functions
+from video_processing import calculate_mask_and_process_video
 
 
 while True:
@@ -36,38 +37,19 @@ end_point_second = None
 current_line_color_second = None
 current_line_second = None
 lines_second = []
-lines = []
-limitsUp = None
-limitsDown = None
-people_crossed_up = set()
-people_crossed_down = set()
+counting_line_limitsUp = None
+counting_line_limitsDown = None
 color_map = {"blue": (255, 0, 0), "red": (0, 0, 255)}
-params = {
-    "max_iou_distance": 0.7,
-    "max_age": 20,
-    "n_init": 1,
-    "nms_max_overlap": 0.1,
-    "max_cosine_distance": 0.2,
-    "nn_budget": None,
-    "gating_only_position": True,
-    "embedder": "mobilenet",
-    "half": False,
-    "bgr": False,
-    "embedder_gpu": True,
-    "polygon": False,
-}
-model = YOLO("yolov8s.pt")
-tracker = DeepSort(**params)
 
 
 # Convert the frame to a PhotoImage for the background image
 if ret:
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    height, width, channels = frame_rgb.shape
+    video_height, video_width, channels = frame_rgb.shape
     pil_image = Image.fromarray(frame_rgb)
     photo_image = ImageTk.PhotoImage(pil_image)
 
-    canvas = tk.Canvas(app, width=width, height=height)
+    canvas = tk.Canvas(app, width=video_width, height=video_height)
     canvas.create_image(0, 0, image=photo_image, anchor=tk.NW)
     canvas.pack()
 
@@ -154,25 +136,25 @@ if ret:
             print("Masking Line Locations:", lines)
 
     def mouse_release_second(event):
-        global drawing_second, current_line_second, lines_second, end_point_second, limitsUp, limitsDown
+        global drawing_second, current_line_second, lines_second, end_point_second, counting_line_limitsUp, counting_line_limitsDown
         if drawing_second and current_line_second:
             drawing_second = False
             end_point_second = (end_point_second[0], end_point_second[1])
             lines_second.append(current_line_second)
             paint_canvas_2()  # Update the canvas after adding the line
 
-            # Assign values of the first line in lines_second to limitsUp
+            # Assign values of the first line in lines_second to counting_line_limitsUp
             if len(lines_second) >= 1:
-                limitsUp = [
+                counting_line_limitsUp = [
                     lines_second[0][0][0],
                     lines_second[0][0][1],
                     lines_second[0][1][0],
                     lines_second[0][1][1],
                 ]
 
-            # Assign values of the second line in lines_second to limitsDown
+            # Assign values of the second line in lines_second to counting_line_limitsDown
             if len(lines_second) >= 2:
-                limitsDown = [
+                counting_line_limitsDown = [
                     lines_second[1][0][0],
                     lines_second[1][0][1],
                     lines_second[1][1][0],
@@ -195,151 +177,8 @@ if ret:
         video_cap.release()
         cv2.destroyAllWindows()
 
-    def tracking(detections, frame):
-        # detections expected to be a list of detections, each in tuples of ( [left,top,w,h], confidence, detection_class
-        tracks = tracker.update_tracks(detections, frame=frame)
-        det = {}
-        for track in tracks:
-            if not track.is_confirmed():
-                continue
-            track_id = int(track.track_id)
-            xmin, ymin, w, h = map(lambda x: int(x), track.to_ltrb())
-            det[track_id] = [xmin, ymin, w, h]
-        return det
-
-    def process_frame(img, tracker_detections):
-        for tracker_id, tracker_bbox in tracker_detections.items():
-            x, y, x_max, y_max = tracker_bbox
-            cx, cy = x + (x_max - x) // 2, y + (y_max - y) // 2
-
-            cv2.rectangle(img, (x, y, x_max - x, y_max - y), (0, 0, 200), 3)
-            text_x, text_y = max(0, x), max(35, y - 5)
-            cv2.putText(
-                img,
-                f"Person ID: {tracker_id}",
-                (text_x, text_y),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.5,
-                (0, 0, 200),
-                2,
-                cv2.LINE_AA,
-            )
-            cv2.circle(img, (cx, cy), 5, (255, 0, 255), cv2.FILLED)
-
-            if (
-                limitsUp[0] < cx < limitsUp[2]
-                and limitsUp[1] - 15 < cy < limitsUp[1] + 15
-            ):
-                if tracker_id not in people_crossed_up:
-                    people_crossed_up.add(tracker_id)
-                    cv2.line(
-                        img,
-                        (limitsUp[0], limitsUp[1]),
-                        (limitsUp[2], limitsUp[3]),
-                        (0, 255, 0),
-                        5,
-                    )
-
-            if (
-                limitsDown[0] < cx < limitsDown[2]
-                and limitsDown[1] - 15 < cy < limitsDown[1] + 15
-            ):
-                if tracker_id not in people_crossed_down:
-                    people_crossed_down.add(tracker_id)
-                    cv2.line(
-                        img,
-                        (limitsDown[0], limitsDown[1]),
-                        (limitsDown[2], limitsDown[3]),
-                        (0, 255, 0),
-                        5,
-                    )
-
-            cv2.putText(
-                img,
-                str(len(people_crossed_up)),
-                (limitsUp[0], limitsUp[1] - 50),
-                cv2.FONT_HERSHEY_PLAIN,
-                3,
-                (0, 255, 0),
-                3,
-            )
-            cv2.putText(
-                img,
-                str(len(people_crossed_down)),
-                (limitsDown[0], limitsDown[1] - 50),
-                cv2.FONT_HERSHEY_PLAIN,
-                3,
-                (0, 255, 0),
-                3,
-            )
-
-        cv2.imshow("Output", img)
-        cv2.waitKey(1)
-
-    def calculate_mask_and_process_video():
-        global video_cap, lines, limitsUp, limitsDown, people_crossed_up, people_crossed_down
-
-        # Load the video once outside the loop
-        video_cap = cv2.VideoCapture(video_url)
-
-        # Initializing the variable with an empty dictionary
-        tracker_detections = {}
-
-        # Define a blank mask
-        mask = np.zeros((height, width), dtype=np.uint8)
-
-        # Pre-calculate the region for the mask
-        blue_line = lines[0] if lines[0][2] == "blue" else lines[1]
-        red_line = lines[0] if lines[0][2] == "red" else lines[1]
-        mask_region = np.array(
-            [
-                [blue_line[0][0], blue_line[0][1]],
-                [blue_line[1][0], blue_line[1][1]],
-                [red_line[1][0], red_line[1][1]],
-                [red_line[0][0], red_line[0][1]],
-            ],
-            dtype=np.int32,
-        )
-        cv2.fillPoly(mask, [mask_region], 255)
-
-        while True:
-            success, img = video_cap.read()
-            if not success:
-                break
-
-            # Apply the mask using bitwise operations
-            imgRegion = cv2.bitwise_and(img, img, mask=mask)
-
-            # Move the model initialization outside the loop if possible
-
-            # Use list comprehension for detections filtering
-            results = model.track(source=imgRegion, stream=False, show=False)
-            detections = [
-                (
-                    [
-                        int(box.xyxy[0][0]),
-                        int(box.xyxy[0][1]),
-                        int(box.xyxy[0][2] - box.xyxy[0][0]),
-                        int(box.xyxy[0][3] - box.xyxy[0][1]),
-                    ],
-                    round(float(box.conf[0]), 2),
-                    "Person",
-                )
-                for r in results
-                for box in r.boxes
-                if round(float(box.conf[0]), 2) > 0.3 and int(box.cls[0]) == 0
-            ]
-
-            tracker_detections = tracking(detections, frame)
-
-            # Move this part to a separate function for better readability and profiling
-            process_frame(img, tracker_detections)
-
-        video_cap.release()
-        cv2.destroyAllWindows()
-
     def continue_to_mask_button():
-        global second_window, canvas_2, lines_second
+        global second_window, canvas_2, lines_second, counting_line_limitsUp, counting_line_limitsDown
         if second_window:
             second_window.destroy()  # Close the second window if it exists
 
@@ -348,7 +187,7 @@ if ret:
         mask_display_window.title("Mask Review")
 
         # Define a blank mask
-        mask = np.zeros((height, width), dtype=np.uint8)
+        mask = np.zeros((video_height, video_width), dtype=np.uint8)
 
         # Draw the region between the blue and red lines on the mask
         for line_start, line_end, line_color in lines:
@@ -376,7 +215,9 @@ if ret:
         pil_mask_frame = Image.fromarray(mask_frame)
         mask_photo = ImageTk.PhotoImage(pil_mask_frame)
 
-        mask_canvas = tk.Canvas(mask_display_window, width=width, height=height)
+        mask_canvas = tk.Canvas(
+            mask_display_window, width=video_width, height=video_height
+        )
         mask_canvas.create_image(0, 0, image=mask_photo, anchor=tk.NW)
         mask_canvas.pack()
 
@@ -388,8 +229,17 @@ if ret:
             # Continue with processing or any other logic you want
             print("Continuing with the mask.")
             mask_display_window.destroy()  # Close the mask display window
+            detection_model = YOLO("yolov8s.pt")
             # Calculate the mask and process the video
-            calculate_mask_and_process_video()  # Start processing the video
+            calculate_mask_and_process_video(
+                detection_model,
+                lines,
+                video_url,
+                video_height,
+                video_width,
+                counting_line_limitsUp,
+                counting_line_limitsDown,
+            )  # Start processing the video
         else:
             # Redo the mask drawing process or handle as needed
             print("Redoing the mask drawing.")
@@ -406,7 +256,7 @@ if ret:
             second_window = tk.Toplevel()
             second_window.title("Counting Lines Window")
 
-            canvas_2 = tk.Canvas(second_window, width=width, height=height)
+            canvas_2 = tk.Canvas(second_window, width=video_width, height=video_height)
             canvas_2.create_image(0, 0, image=photo_image, anchor=tk.NW)
             canvas_2.pack()
 
@@ -448,7 +298,7 @@ if ret:
             )
 
         canvas_2.create_text(
-            width - 10,
+            video_width - 10,
             10,
             anchor=tk.NE,
             text="Counting line 1",
@@ -456,7 +306,7 @@ if ret:
             font=("Helvetica", 16, "bold"),
         )
         canvas_2.create_text(
-            width - 10,
+            video_width - 10,
             30,
             anchor=tk.NE,
             text="Counting Line 2",
@@ -478,7 +328,7 @@ if ret:
 
         # Add the legend
         canvas.create_text(
-            width - 10,
+            video_width - 10,
             10,
             anchor=tk.NE,
             text="Mask Start line",
@@ -486,7 +336,7 @@ if ret:
             font=("Helvetica", 16, "bold"),
         )
         canvas.create_text(
-            width - 10,
+            video_width - 10,
             30,
             anchor=tk.NE,
             text="Mask End line",
