@@ -69,7 +69,7 @@ if ret:
             start_point = (event.x, event.y)
             end_point = (event.x, event.y)
 
-            # Set the line color based on line count
+            # Set the line color based on line_count
             if len(lines) == 0:
                 current_line_color = "blue"
             else:
@@ -161,21 +161,6 @@ if ret:
                     lines_second[1][1][1],
                 ]
 
-    def play_video():
-        while True:
-            ret, frame = video_cap.read()
-            if not ret:
-                break
-            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            pil_image = Image.fromarray(frame_rgb)
-            photo_image = ImageTk.PhotoImage(pil_image)
-            canvas.create_image(0, 0, image=photo_image, anchor=tk.NW)
-            canvas.update()
-            if cv2.waitKey(1) & 0xFF == ord("q"):  # Exit loop if 'q' key is pressed
-                break
-
-        video_cap.release()
-        cv2.destroyAllWindows()
 
     def continue_to_mask_button():
         global second_window, canvas_2, lines_second, counting_line_limitsUp, counting_line_limitsDown
