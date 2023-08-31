@@ -172,3 +172,5 @@ def calculate_mask_and_process_video(
             people_crossed_up,
             people_crossed_down,
         )
+    video_cap.release()
+    cv2.destroyAllWindows()

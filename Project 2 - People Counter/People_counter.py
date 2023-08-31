@@ -230,6 +230,7 @@ if ret:
             print("Redoing the mask drawing.")
             mask_display_window.destroy()  # Close the mask display window
 
+
     def done_button_clicked():
         global second_window, canvas_2, lines_second
         app.withdraw()
