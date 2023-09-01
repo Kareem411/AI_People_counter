@@ -7,7 +7,7 @@ from PIL import Image, ImageTk
 from ultralytics import YOLO
 
 # Importing created functions
-from video_processing import calculate_mask_and_process_video
+from Video_Processing_Functions import calculate_mask_and_process_video
 
 
 while True:
