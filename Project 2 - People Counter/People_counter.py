@@ -162,11 +162,30 @@ if ret:
                 ]
 
 
-    def continue_to_mask_button():
+    def process_video_button():
         global second_window, canvas_2, lines_second, counting_line_limitsUp, counting_line_limitsDown
         if second_window:
             second_window.destroy()  # Close the second window if it exists
+        print("Initializing model...")
+        detection_model = YOLO("yolov8s.pt")
+        # Calculate the mask and process the video
+        calculate_mask_and_process_video(
+            detection_model,
+            lines,
+            video_url,
+            video_height,
+            video_width,
+            counting_line_limitsUp,
+            counting_line_limitsDown,
+        )  # Start processing the video
 
+
+    def to_counting_window_btn_clicked():
+        global second_window, canvas_2, lines_second
+        app.withdraw()
+        if video_cap:
+            video_cap.release()
+        cv2.destroyAllWindows()
         # Create a new window to display the mask
         mask_display_window = tk.Toplevel()
         mask_display_window.title("Mask Review")
@@ -214,58 +233,40 @@ if ret:
             # Continue with processing or any other logic you want
             print("Continuing with the mask.")
             mask_display_window.destroy()  # Close the mask display window
-            detection_model = YOLO("yolov8s.pt")
-            # Calculate the mask and process the video
-            calculate_mask_and_process_video(
-                detection_model,
-                lines,
-                video_url,
-                video_height,
-                video_width,
-                counting_line_limitsUp,
-                counting_line_limitsDown,
-            )  # Start processing the video
+            if not second_window:
+                second_window = tk.Toplevel()
+                second_window.title("Counting Lines Window")
+
+                canvas_2 = tk.Canvas(second_window, width=video_width, height=video_height)
+                canvas_2.create_image(0, 0, image=photo_image, anchor=tk.NW)
+                canvas_2.pack()
+
+                Counting_window_label = tk.Label(
+                    second_window,
+                    text="Mark a line indicating where to tally pedestrians.",
+                    font=("Helvetica", 12),
+                )
+                Counting_window_label.pack()
+
+                Counting_window_button = tk.Button(
+                    second_window,
+                    text="Start Processing",
+                    command=process_video_button,
+                    cursor="hand2",
+                )
+                Counting_window_button.pack()
+
+                canvas_2.bind("<ButtonPress-1>", mouse_press_second)
+                canvas_2.bind("<B1-Motion>", mouse_move_second)
+                canvas_2.bind("<ButtonRelease-1>", mouse_release_second)
+
+                paint_canvas_2()  # Update the canvas initially
         else:
             # Redo the mask drawing process or handle as needed
             print("Redoing the mask drawing.")
             mask_display_window.destroy()  # Close the mask display window
 
-
-    def done_button_clicked():
-        global second_window, canvas_2, lines_second
-        app.withdraw()
-        if video_cap:
-            video_cap.release()
-        cv2.destroyAllWindows()
-
-        if not second_window:
-            second_window = tk.Toplevel()
-            second_window.title("Counting Lines Window")
-
-            canvas_2 = tk.Canvas(second_window, width=video_width, height=video_height)
-            canvas_2.create_image(0, 0, image=photo_image, anchor=tk.NW)
-            canvas_2.pack()
-
-            Counting_window_label = tk.Label(
-                second_window,
-                text="Mark a line indicating where to tally pedestrians.",
-                font=("Helvetica", 12),
-            )
-            Counting_window_label.pack()
-
-            Counting_window_button = tk.Button(
-                second_window,
-                text="Start Processing",
-                command=continue_to_mask_button,
-                cursor="hand2",
-            )
-            Counting_window_button.pack()
-
-            canvas_2.bind("<ButtonPress-1>", mouse_press_second)
-            canvas_2.bind("<B1-Motion>", mouse_move_second)
-            canvas_2.bind("<ButtonRelease-1>", mouse_release_second)
-
-            paint_canvas_2()  # Update the canvas initially
+        
 
     def paint_canvas_2():
         canvas_2.delete("all")
@@ -330,15 +331,15 @@ if ret:
             font=("Helvetica", 16, "bold"),
         )
 
-    done_button = tk.Button(
+    to_counting_window_btn = tk.Button(
         app,
         text="Continue",
-        command=done_button_clicked,
+        command=to_counting_window_btn_clicked,
         relief=tk.RAISED,
         borderwidth=2,
         cursor="hand2",
     )
-    done_button.pack()
+    to_counting_window_btn.pack()
     canvas.bind("<ButtonPress-1>", mouse_press)
     canvas.bind("<B1-Motion>", mouse_move)
     canvas.bind("<ButtonRelease-1>", mouse_release)
