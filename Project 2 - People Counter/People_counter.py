@@ -162,11 +162,11 @@ if ret:
                 ]
 
 
-    def process_video_button():
+    def process__video_button():
         global second_window, canvas_2, lines_second, counting_line_limitsUp, counting_line_limitsDown
         if second_window:
             second_window.destroy()  # Close the second window if it exists
-        print("Initializing model...")
+
         detection_model = YOLO("yolov8s.pt")
         # Calculate the mask and process the video
         calculate_mask_and_process_video(
@@ -226,9 +226,7 @@ if ret:
         mask_canvas.pack()
 
         # Ask the user whether to continue or redo
-        user_response = simpledialog.askstring(
-            "Mask Review", "Do you want to continue with this mask? (yes/no)"
-        )
+        user_response = tk.messagebox.askquestion("Mask Review", "Do you want to continue with this mask?", icon="question")
         if user_response and user_response.lower() == "yes":
             # Continue with processing or any other logic you want
             print("Continuing with the mask.")
@@ -251,7 +249,7 @@ if ret:
                 Counting_window_button = tk.Button(
                     second_window,
                     text="Start Processing",
-                    command=process_video_button,
+                    command=process__video_button,
                     cursor="hand2",
                 )
                 Counting_window_button.pack()
@@ -262,9 +260,9 @@ if ret:
 
                 paint_canvas_2()  # Update the canvas initially
         else:
-            # Redo the mask drawing process or handle as needed
-            print("Redoing the mask drawing.")
+            print("Exiting the script...")
             mask_display_window.destroy()  # Close the mask display window
+            sys.exit()
 
         
 
