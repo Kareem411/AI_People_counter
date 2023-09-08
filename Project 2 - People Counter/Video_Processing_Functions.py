@@ -22,13 +22,7 @@ tracker = DeepSort(**params)
 def tracking(detections, frame):
     # detections expected to be a list of detections, each in tuples of ( [left,top,w,h], confidence, detection_class
     tracks = tracker.update_tracks(detections, frame=frame)
-    det = {}
-    for track in tracks:
-        if not track.is_confirmed():
-            continue
-        track_id = int(track.track_id)
-        xmin, ymin, w, h = map(lambda x: int(x), track.to_ltrb())
-        det[track_id] = [xmin, ymin, w, h]
+    det = {int(track.track_id): [int(x) for x in track.to_ltrb()] for track in tracks if track.is_confirmed()}
     return det
 
 
@@ -40,70 +34,66 @@ def process_frame(
     people_crossed_up,
     people_crossed_down,
 ):
+    # Calculating the values outside the loop
+    limitsUp_y_minus_15 = limitsUp[1] - 15
+    limitsUp_y_plus_15 = limitsUp[1] + 15
+    limitsDown_y_minus_15 = limitsDown[1] - 15
+    limitsDown_y_plus_15 = limitsDown[1] + 15
+
+    # Creating a list to store draw commands for improved performance
+    draw_commands = []
+
     for tracker_id, tracker_bbox in tracker_detections.items():
         x, y, x_max, y_max = tracker_bbox
         cx, cy = x + (x_max - x) // 2, y + (y_max - y) // 2
 
-        cv2.rectangle(img, (x, y, x_max - x, y_max - y), (0, 0, 200), 3)
-        text_x, text_y = max(0, x), max(35, y - 5)
-        cv2.putText(
-            img,
-            f"Person ID: {tracker_id}",
-            (text_x, text_y),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.5,
-            (0, 0, 200),
-            2,
-            cv2.LINE_AA,
-        )
-        cv2.circle(img, (cx, cy), 5, (255, 0, 255), cv2.FILLED)
+        # Adding a rectangle to draw commands
+        draw_commands.append((cv2.rectangle, (img, (x, y), (x_max, y_max), (0, 0, 200), 3)))
 
-        if limitsUp[0] < cx < limitsUp[2] and limitsUp[1] - 15 < cy < limitsUp[1] + 15:
+        # Adding text to draw commands
+        text_x, text_y = max(0, x), max(35, y - 5)
+        draw_commands.append((cv2.putText, (img, f"Person ID: {tracker_id}", (text_x, text_y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 200), 2, cv2.LINE_AA)))
+
+        # Adding circle to draw commands
+        draw_commands.append((cv2.circle, (img, (cx, cy), 5, (255, 0, 255), cv2.FILLED)))
+
+        if limitsUp[0] < cx < limitsUp[2] and limitsUp_y_minus_15 < cy < limitsUp_y_plus_15:
             if tracker_id not in people_crossed_up:
                 people_crossed_up.add(tracker_id)
-                cv2.line(
-                    img,
-                    (limitsUp[0], limitsUp[1]),
-                    (limitsUp[2], limitsUp[3]),
-                    (0, 255, 0),
-                    5,
-                )
+                draw_commands.append((cv2.line, (img, (limitsUp[0], limitsUp[1]), (limitsUp[2], limitsUp[3]), (0, 255, 0), 5)))
 
-        if (
-            limitsDown[0] < cx < limitsDown[2]
-            and limitsDown[1] - 15 < cy < limitsDown[1] + 15
-        ):
+        if limitsDown[0] < cx < limitsDown[2] and limitsDown_y_minus_15 < cy < limitsDown_y_plus_15:
             if tracker_id not in people_crossed_down:
                 people_crossed_down.add(tracker_id)
-                cv2.line(
-                    img,
-                    (limitsDown[0], limitsDown[1]),
-                    (limitsDown[2], limitsDown[3]),
-                    (0, 255, 0),
-                    5,
-                )
+                draw_commands.append((cv2.line, (img, (limitsDown[0], limitsDown[1]), (limitsDown[2], limitsDown[3]), (0, 255, 0), 5)))
 
-        cv2.putText(
-            img,
-            str(len(people_crossed_up)),
-            (limitsUp[0], limitsUp[1] - 50),
-            cv2.FONT_HERSHEY_PLAIN,
-            3,
-            (0, 255, 0),
-            3,
-        )
-        cv2.putText(
-            img,
-            str(len(people_crossed_down)),
-            (limitsDown[0], limitsDown[1] - 50),
-            cv2.FONT_HERSHEY_PLAIN,
-            3,
-            (0, 255, 0),
-            3,
-        )
+    # Executing all draw commands
+    for cmd, args in draw_commands:
+        cmd(*args)
+
+    # Adding the text for people crossed
+    cv2.putText(
+        img,
+        str(len(people_crossed_up)),
+        (limitsUp[0], limitsUp[1] - 50),
+        cv2.FONT_HERSHEY_PLAIN,
+        3,
+        (0, 255, 0),
+        3,
+    )
+    cv2.putText(
+        img,
+        str(len(people_crossed_down)),
+        (limitsDown[0], limitsDown[1] - 50),
+        cv2.FONT_HERSHEY_PLAIN,
+        3,
+        (0, 255, 0),
+        3,
+    )
 
     cv2.imshow("Output", img)
     cv2.waitKey(1)
+
 
 
 def calculate_mask_and_process_video(
