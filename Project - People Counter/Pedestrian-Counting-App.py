@@ -216,7 +216,7 @@ if ret:
         mask_frame = cv2.bitwise_and(frame.copy(), frame.copy(), mask=mask)
 
         # Convert the frame to a PhotoImage for display in the tkinter window
-        pil_mask_frame = Image.fromarray(mask_frame)
+        pil_mask_frame = Image.fromarray(cv2.cvtColor(mask_frame,cv2.COLOR_BGR2RGB))
         mask_photo = ImageTk.PhotoImage(pil_mask_frame)
 
         mask_canvas = tk.Canvas(
