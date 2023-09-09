@@ -13,10 +13,14 @@ This GitHub repository contains a Python project for counting people on escalato
 
 ## Masking & Tracking
 
-https://github.com/Kareem411/AI_People_counter/assets/65580300/d05d3a5d-7e12-4504-85bc-43a058cd50c3
 
 
-https://github.com/Kareem411/AI_People_counter/assets/65580300/b47f5e29-80a3-456b-8b09-4ff592ecc00b
+https://github.com/Kareem411/AI_People_counter/assets/65580300/156769c7-d883-442c-a28b-5b6e7485acdb
+
+
+
+https://github.com/Kareem411/AI_People_counter/assets/65580300/78a70605-7269-4fe8-a853-40ff7134b1aa
+
 
 
 
