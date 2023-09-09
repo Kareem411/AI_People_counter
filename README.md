@@ -24,6 +24,9 @@ https://github.com/Kareem411/AI_People_counter/assets/65580300/78a70605-7269-4fe
 
 
 
+Thank you for providing the corrected installation instructions. Here's the updated README with the installation section reflecting the specified order:
+
+```markdown
 ## Installation
 
 To use this application, follow these steps:
@@ -31,20 +34,25 @@ To use this application, follow these steps:
 1. Clone this GitHub repository:
 
    ```bash
-   git clone https://github.com/yourusername/pedestrian-counting-app.git
+   git clone https://github.com/Kareem411/AI_People_counter.git
    ```
 
 2. Navigate to the project directory:
 
    ```bash
-   cd pedestrian-counting-app
+   cd "Project - People Counter"
    ```
 
-3. Install the required Python packages using `pip`:
+3. Install the required Python packages in the following order using `pip`:
 
    ```bash
-   pip install -r requirements.txt
+   pip install ultralytics
+   pip uninstall torchvision
+   pip install --pre torchvision -f https://download.pytorch.org/whl/nightly/cu118/torch_nightly.html
+   pip install deep_sort_realtime
    ```
+
+   These commands will install the necessary packages and configure your environment for running the application.
 
 ## Usage
 
@@ -79,3 +87,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Contact
 
 If you have any questions or suggestions, please feel free to [contact me](zadkareem@gmail.com).
+```
