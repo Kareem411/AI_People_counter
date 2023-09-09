@@ -11,6 +11,15 @@ This GitHub repository contains a Python project for counting people on escalato
 - Apply a mask to limit object detection to a specific region of interest.
 - User-friendly GUI for selecting video sources and drawing counting lines.
 
+## Masking & Tracking
+
+https://github.com/Kareem411/AI_People_counter/assets/65580300/d05d3a5d-7e12-4504-85bc-43a058cd50c3
+
+
+https://github.com/Kareem411/AI_People_counter/assets/65580300/b47f5e29-80a3-456b-8b09-4ff592ecc00b
+
+
+
 ## Installation
 
 To use this application, follow these steps:
@@ -62,10 +71,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - This project utilizes the [YOLOv8](https://github.com/ultralytics/ultralytics) model for object detection.
 - The object tracking component is powered by [DeepSort](https://github.com/ultralytics/deepsort).
 - Special thanks to the open-source community for their contributions to computer vision and object tracking.
-
-## Author
-
-Kareem
 
 ## Contact
 
