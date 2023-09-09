@@ -22,11 +22,6 @@ https://github.com/Kareem411/AI_People_counter/assets/65580300/156769c7-d883-442
 https://github.com/Kareem411/AI_People_counter/assets/65580300/78a70605-7269-4fe8-a853-40ff7134b1aa
 
 
-
-
-Thank you for providing the corrected installation instructions. Here's the updated README with the installation section reflecting the specified order:
-
-```markdown
 ## Installation
 
 To use this application, follow these steps:
