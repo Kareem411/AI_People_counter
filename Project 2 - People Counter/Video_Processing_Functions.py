@@ -34,11 +34,12 @@ def process_frame(
     people_crossed_up,
     people_crossed_down,
 ):
+    offset = 15
     # Calculating the values outside the loop
-    limitsUp_y_minus_15 = limitsUp[1] - 15
-    limitsUp_y_plus_15 = limitsUp[1] + 15
-    limitsDown_y_minus_15 = limitsDown[1] - 15
-    limitsDown_y_plus_15 = limitsDown[1] + 15
+    limitsUp_y_minus_15 = limitsUp[1] - offset
+    limitsUp_y_plus_15 = limitsUp[1] + offset
+    limitsDown_y_minus_15 = limitsDown[1] - offset
+    limitsDown_y_plus_15 = limitsDown[1] + offset
 
     # Creating a list to store draw commands for improved performance
     draw_commands = []
