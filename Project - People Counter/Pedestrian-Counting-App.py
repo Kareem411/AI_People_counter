@@ -167,7 +167,7 @@ if ret:
         if second_window:
             second_window.destroy()  # Close the second window if it exists
 
-        detection_model = YOLO("yolov8s.pt")
+        detection_model = YOLO("yolov8n.pt")
         # Calculate the mask and process the video
         calculate_mask_and_process_video(
             detection_model,
