@@ -77,7 +77,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - This project utilizes the [YOLOv8](https://github.com/ultralytics/ultralytics) model for object detection.
 - The object tracking component is powered by [DeepSort](https://github.com/ultralytics/deepsort).
-- Special thanks to the open-source community for their contributions to computer vision and object tracking.
 
 ## Contact
 
